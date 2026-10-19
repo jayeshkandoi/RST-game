@@ -4,11 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>RST – the word game</title>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
-:root{--bg:#f3efe6;--card:#fffdf8;--ink:#1d2433;--mute:#6b7285;--line:#d9d2c2;--ban:#d6342c;--ok:#1f8a5b;--btn:#1d2433;--btnink:#fffdf8;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141821;--card:#1e2430;--ink:#f1ece0;--mute:#9aa1b3;--line:#323a4a;--ban:#ff6b61;--ok:#4cc790;--btn:#f1ece0;--btnink:#141821;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#141821;--card:#1e2430;--ink:#f1ece0;--mute:#9aa1b3;--line:#323a4a;--ban:#ff6b61;--ok:#4cc790;--btn:#f1ece0;--btnink:#141821;color-scheme:dark}
+:root{--bg:#f3efe6;--card:#fffdf8;--ink:#1d2433;--mute:#6b7285;--line:#d9d2c2;--ban:#d6342c;--ok:#1f8a5b;--btn:#1d2433;--btnink:#fffdf8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#141821;--card:#1e2430;--ink:#f1ece0;--mute:#9aa1b3;--line:#323a4a;--ban:#ff6b61;--ok:#4cc790;--btn:#f1ece0;--btnink:#141821;color-scheme:dark}}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:Georgia,"Iowan Old Style","Times New Roman",serif;min-height:100vh;display:flex;justify-content:center}
@@ -18,28 +17,30 @@ h1 span{color:var(--ban)}
 .sub{text-align:center;color:var(--mute);margin:8px 0 20px;font-size:16px;line-height:1.4}
 .card{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
 h2{font-size:18px;margin:0 0 10px}
-ol,ul{margin:0;padding-left:20px;line-height:1.5;font-size:15px}
-input{font:inherit;font-size:18px;width:100%;padding:12px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+ol{margin:0;padding-left:20px;line-height:1.5;font-size:15px}
+input{font:inherit;font-size:18px;width:100%;padding:12px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);margin-bottom:8px}
 input:focus,button:focus-visible{outline:3px solid var(--ok);outline-offset:1px}
 button{font:inherit;font-size:17px;cursor:pointer;border:0;border-radius:10px;padding:12px 18px;background:var(--btn);color:var(--btnink);font-weight:bold}
 button.alt{background:transparent;color:var(--ink);border:2px solid var(--line)}
 button:disabled{opacity:.4;cursor:default}
-.row{display:flex;gap:8px;margin-top:10px}
+.row{display:flex;gap:8px;margin-top:8px}
 .row>*{flex:1}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .chip{padding:6px 12px;border-radius:99px;border:2px solid var(--line);font-size:15px}
 .chip.cur{border-color:var(--ok);background:var(--ok);color:var(--btnink)}
 .chip.out{text-decoration:line-through;color:var(--mute);opacity:.6}
+.chip.me{font-weight:bold}
 .last{text-align:center;margin:6px 0 14px}
 .last small{color:var(--mute);display:block;font-size:15px}
 .last b{font-size:40px;display:block;word-break:break-word}
 .who{text-align:center;font-size:22px;margin:4px 0}
 .timer{height:8px;border-radius:8px;background:var(--line);overflow:hidden;margin:10px 0}
-.timer i{display:block;height:100%;background:var(--ok);width:100%;transition:width 1s linear}
+.timer i{display:block;height:100%;width:100%;transition:width 1s linear}
 .msg{min-height:24px;text-align:center;font-size:16px;margin:10px 0 0}
 .msg.bad{color:var(--ban);font-weight:bold}
 .big{text-align:center;font-size:34px;margin:10px 0}
-.hist{color:var(--mute);font-size:15px;line-height:1.6;margin-top:6px;word-break:break-word}
+.code{text-align:center;font-size:48px;letter-spacing:.2em;font-weight:bold;margin:6px 0}
+.hist{color:var(--mute);font-size:15px;line-height:1.6;margin-top:10px;word-break:break-word}
 .hidden{display:none}
 </style>
 </head>
@@ -48,25 +49,39 @@ button:disabled{opacity:.4;cursor:default}
 <h1>R<span>S</span>T</h1>
 <p class="sub">Say a word that fits the last one. Never start with R, S or T.</p>
 
-<section id="setup">
+<section id="home">
+  <div class="card">
+    <h2>Your name</h2>
+    <input id="name" maxlength="16" placeholder="Name" autocomplete="off">
+    <div class="row"><button id="create">Create room</button></div>
+  </div>
+  <div class="card">
+    <h2>Join a friend’s room</h2>
+    <input id="code" maxlength="4" placeholder="4-letter code" autocomplete="off" autocapitalize="characters">
+    <div class="row"><button class="alt" id="join">Join room</button></div>
+  </div>
   <div class="card">
     <h2>How to play</h2>
     <ol>
       <li>First player says any word.</li>
       <li>Next player says a word that is similar to or makes sense with it.</li>
       <li>A word starting with <b style="color:var(--ban)">R, S or T</b> puts you out.</li>
-      <li>Repeated words, unrelated words or running out of time also put you out.</li>
+      <li>Repeated words, unrelated words or running out of the 10 seconds also put you out.</li>
       <li>Last player left wins.</li>
     </ol>
   </div>
+  <div class="msg bad" id="homeMsg"></div>
+</section>
+
+<section id="lobby" class="hidden">
   <div class="card">
-    <h2>Players</h2>
-    <div id="names"></div>
-    <div class="row">
-      <button class="alt" id="add">Add player</button>
-      <button class="alt" id="rem">Remove player</button>
-    </div>
+    <h2>Room code</h2>
+    <div class="code" id="roomCode"></div>
+    <div class="sub" style="margin:0">Friends open this site and enter the code.</div>
+    <div class="row"><button class="alt" id="copy">Copy invite link</button></div>
+    <div class="chips" id="lobbyChips"></div>
     <div class="row"><button id="start">Start game</button></div>
+    <div class="msg" id="lobbyMsg"></div>
   </div>
 </section>
 
@@ -89,93 +104,192 @@ button:disabled{opacity:.4;cursor:default}
     <div class="big" id="winner"></div>
     <div class="hist" id="endHist"></div>
     <div class="row"><button id="again">Play again</button></div>
+    <div class="msg" id="endMsg"></div>
   </div>
 </section>
 </main>
 
 <script>
-const BAN="rst", TIME=10;
-let names=["Player 1","Player 2"], players=[], cur=0, last="", used=[], hist=[], t=TIME, iv=null;
+const BAN="rst", TIME=10, PREFIX="rstgame-", LET="ABCDEFGHJKLMNPQRSTUVWXYZ";
 const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let peer=null, isHost=false, conns={}, hostConn=null, myId=null, myName="", room="", used=[], iv=null;
+let S={phase:"lobby",players:[],cur:0,last:"",hist:[],t:TIME,msg:"",bad:false,winner:""};
 
-function drawNames(){
-  $("names").innerHTML="";
-  names.forEach((n,i)=>{
-    const inp=document.createElement("input");
-    inp.value=n; inp.style.marginBottom="8px"; inp.setAttribute("aria-label","Player "+(i+1)+" name");
-    inp.oninput=()=>names[i]=inp.value;
-    $("names").appendChild(inp);
-  });
-  $("rem").disabled=names.length<=2;
-  $("add").disabled=names.length>=12;
+$("name").value=localStorage.getItem("rstName")||"";
+const q=new URLSearchParams(location.search).get("room");
+if(q)$("code").value=q.toUpperCase().slice(0,4);
+
+function show(id){["home","lobby","play","end"].forEach(s=>$(s).classList.toggle("hidden",s!==id));}
+function homeErr(t){$("homeMsg").textContent=t;}
+function getName(){
+  myName=$("name").value.trim()||"Player";
+  try{localStorage.setItem("rstName",myName);}catch(e){}
+  return myName;
 }
-$("add").onclick=()=>{names.push("Player "+(names.length+1));drawNames();};
-$("rem").onclick=()=>{if(names.length>2){names.pop();drawNames();}};
 
-$("start").onclick=()=>{
-  players=names.map((n,i)=>({name:n.trim()||"Player "+(i+1),out:false}));
-  cur=0; last=""; used=[]; hist=[];
-  $("setup").classList.add("hidden"); $("end").classList.add("hidden"); $("play").classList.remove("hidden");
-  render(); startTimer();
+/* ---------- connecting ---------- */
+function makeCode(){let c="";for(let i=0;i<4;i++)c+=LET[Math.floor(Math.random()*LET.length)];return c;}
+
+$("create").onclick=()=>{
+  getName(); homeErr("Creating room…");
+  isHost=true; myId="host"; room=makeCode();
+  openHost();
+};
+function openHost(){
+  if(peer)peer.destroy();
+  peer=new Peer(PREFIX+room);
+  peer.on("open",()=>{
+    homeErr("");
+    S={phase:"lobby",players:[{id:"host",name:myName,out:false}],cur:0,last:"",hist:[],t:TIME,msg:"",bad:false,winner:""};
+    broadcast();
+  });
+  peer.on("error",e=>{
+    if(e.type==="unavailable-id"){room=makeCode();openHost();}
+    else homeErr("Couldn’t create a room. Check your internet and try again.");
+  });
+  peer.on("connection",c=>{
+    c.on("open",()=>{conns[c.peer]=c;});
+    c.on("data",d=>hostGot(c,d));
+    c.on("close",()=>drop(c.peer));
+  });
+}
+
+$("join").onclick=()=>{
+  getName(); room=$("code").value.trim().toUpperCase();
+  if(room.length!==4){homeErr("Enter the 4-letter room code.");return;}
+  homeErr("Joining…"); isHost=false;
+  peer=new Peer();
+  peer.on("error",()=>homeErr("Couldn’t find that room. Check the code and try again."));
+  peer.on("open",id=>{
+    myId=id;
+    hostConn=peer.connect(PREFIX+room,{reliable:true});
+    hostConn.on("open",()=>hostConn.send({type:"join",name:myName}));
+    hostConn.on("data",d=>{
+      if(d.type==="state"){S=d.S;render();}
+      if(d.type==="full"){homeErr("That game has already started.");show("home");}
+    });
+    hostConn.on("close",()=>{homeErr("The host left the game.");show("home");});
+  });
 };
 
-function alive(){return players.filter(p=>!p.out);}
-
-function render(){
-  $("who").textContent=players[cur].name+"’s turn";
-  $("lastLabel").textContent=last?"Last word":"You start";
-  $("lastWord").textContent=last||"Any word you like";
-  $("judge").classList.toggle("hidden",!last);
-  $("chips").innerHTML=players.map((p,i)=>`<span class="chip ${p.out?"out":""} ${i===cur?"cur":""}">${esc(p.name)}</span>`).join("");
-  $("hist").textContent=hist.length?hist.slice(-8).join(" → "):"";
-  $("word").value=""; $("word").focus();
+/* ---------- host logic ---------- */
+function broadcast(){
+  Object.values(conns).forEach(c=>{if(c.open)c.send({type:"state",S});});
+  render();
 }
-function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
-
+function hostGot(c,d){
+  if(d.type==="join"){
+    if(S.phase!=="lobby"||S.players.length>=12){c.send({type:"full"});return;}
+    S.players.push({id:c.peer,name:String(d.name||"Player").slice(0,16),out:false});
+    broadcast();
+  }else act(c.peer,d);
+}
+function act(sender,d){
+  if(S.phase!=="play")return;
+  if(d.type==="word"&&S.players[S.cur].id===sender)submit(String(d.word||"").trim());
+  if(d.type==="judge"&&S.last)eliminate("word didn’t make sense");
+}
+function alive(){return S.players.filter(p=>!p.out);}
+function nextTurn(){do{S.cur=(S.cur+1)%S.players.length;}while(S.players[S.cur].out);}
 function startTimer(){
-  clearInterval(iv); t=TIME; bar();
-  iv=setInterval(()=>{t--;bar();if(t<=0){eliminate("ran out of time");}},1000);
+  clearInterval(iv);S.t=TIME;
+  iv=setInterval(()=>{S.t--;if(S.t<=0)eliminate("ran out of time");else broadcast();},1000);
 }
-function bar(){$("bar").style.width=(t/TIME*100)+"%";$("bar").style.background=t<=5?"var(--ban)":"var(--ok)";}
-
-function msg(text,bad){$("msg").textContent=text;$("msg").className="msg"+(bad?" bad":"");}
-
-function next(){
-  do{cur=(cur+1)%players.length;}while(players[cur].out);
-}
-
-function eliminate(reason){
-  clearInterval(iv);
-  const p=players[cur]; p.out=true;
-  hist.push("✗ "+p.name);
-  if(alive().length===1){return finish();}
-  msg(p.name+" is out: "+reason,true);
-  next(); render(); startTimer();
-  $("msg").textContent=p.name+" is out: "+reason; $("msg").className="msg bad";
-}
-
-function submit(){
-  const w=$("word").value.trim();
-  if(!w){msg("Type a word first.",true);return;}
-  const lw=w.toLowerCase();
-  if(BAN.includes(lw[0])){return eliminate("“"+w+"” starts with "+w[0].toUpperCase());}
-  if(used.includes(lw)){return eliminate("“"+w+"” was already said");}
-  used.push(lw); last=w; hist.push(w);
-  clearInterval(iv); next(); render(); msg(""); startTimer();
-}
-
 function finish(){
-  clearInterval(iv);
-  $("play").classList.add("hidden"); $("end").classList.remove("hidden");
-  $("winner").textContent="🏆 "+alive()[0].name+" wins!";
-  $("endHist").textContent=hist.join(" → ");
+  clearInterval(iv);S.phase="end";
+  S.winner=alive().length?alive()[0].name:"Nobody";
+  broadcast();
 }
+function eliminate(reason){
+  const p=S.players[S.cur];p.out=true;S.hist.push("✗ "+p.name);
+  if(alive().length<=1)return finish();
+  S.msg=p.name+" is out: "+reason;S.bad=true;
+  nextTurn();startTimer();broadcast();
+}
+function submit(w){
+  if(!w)return;
+  const lw=w.toLowerCase();
+  if(BAN.includes(lw[0]))return eliminate("“"+w+"” starts with "+w[0].toUpperCase());
+  if(used.includes(lw))return eliminate("“"+w+"” was already said");
+  used.push(lw);S.last=w;S.hist.push(w);S.msg="";S.bad=false;
+  nextTurn();startTimer();broadcast();
+}
+function drop(id){
+  delete conns[id];
+  const i=S.players.findIndex(p=>p.id===id);if(i<0)return;
+  if(S.phase==="lobby"){S.players.splice(i,1);return broadcast();}
+  if(S.players[i].out)return;
+  if(S.phase==="play"&&i===S.cur){S.msg=S.players[i].name+" left the game";S.bad=true;return eliminate("left the game");}
+  S.players[i].out=true;
+  if(S.phase==="play"&&alive().length<=1)return finish();
+  broadcast();
+}
+$("start").onclick=()=>{
+  if(S.players.length<2){$("lobbyMsg").textContent="Wait for at least one friend to join.";return;}
+  used=[];S.players.forEach(p=>p.out=false);
+  S.phase="play";S.cur=0;S.last="";S.hist=[];S.msg="";S.bad=false;
+  startTimer();broadcast();
+};
+$("again").onclick=()=>{
+  if(!isHost)return;
+  clearInterval(iv);S.players.forEach(p=>p.out=false);
+  S.phase="lobby";S.last="";S.hist=[];S.msg="";broadcast();
+};
 
-$("say").onclick=submit;
-$("word").addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
-$("judge").onclick=()=>eliminate("word didn’t make sense");
-$("again").onclick=()=>{$("end").classList.add("hidden");$("setup").classList.remove("hidden");};
-drawNames();
+/* ---------- actions from this device ---------- */
+function send(d){if(isHost)act("host",d);else if(hostConn&&hostConn.open)hostConn.send(d);}
+function say(){
+  const w=$("word").value.trim();
+  if(!w)return;
+  $("word").value="";
+  send({type:"word",word:w});
+}
+$("say").onclick=say;
+$("word").addEventListener("keydown",e=>{if(e.key==="Enter")say();});
+$("judge").onclick=()=>send({type:"judge"});
+$("copy").onclick=()=>{
+  const link=location.origin+location.pathname+"?room="+room;
+  const done=()=>{$("copy").textContent="Copied";setTimeout(()=>$("copy").textContent="Copy invite link",1500);};
+  if(navigator.clipboard)navigator.clipboard.writeText(link).then(done,()=>$("lobbyMsg").textContent=link);
+  else $("lobbyMsg").textContent=link;
+};
+
+/* ---------- drawing ---------- */
+let lastTurnKey="";
+function chips(){return S.players.map((p,i)=>`<span class="chip ${p.out?"out":""} ${S.phase==="play"&&i===S.cur?"cur":""} ${p.id===myId?"me":""}">${esc(p.name)}${p.id===myId?" (you)":""}</span>`).join("");}
+function render(){
+  if(S.phase==="lobby"){
+    show("lobby");
+    $("roomCode").textContent=room;
+    $("lobbyChips").innerHTML=chips();
+    $("start").classList.toggle("hidden",!isHost);
+    if(!isHost)$("lobbyMsg").textContent="Waiting for the host to start…";
+  }else if(S.phase==="play"){
+    show("play");
+    const p=S.players[S.cur],mine=p.id===myId;
+    $("who").textContent=mine?"Your turn":p.name+"’s turn";
+    $("lastLabel").textContent=S.last?"Last word":"First word";
+    $("lastWord").textContent=S.last||"Any word you like";
+    $("judge").classList.toggle("hidden",!S.last);
+    $("bar").style.width=(S.t/TIME*100)+"%";
+    $("bar").style.background=S.t<=4?"var(--ban)":"var(--ok)";
+    $("word").disabled=!mine;$("say").disabled=!mine;
+    $("word").placeholder=mine?"Type your word":"Waiting for "+p.name;
+    $("msg").textContent=S.msg;$("msg").className="msg"+(S.bad?" bad":"");
+    $("chips").innerHTML=chips();
+    $("hist").textContent=S.hist.slice(-8).join(" → ");
+    const key=S.cur+"|"+S.hist.length;
+    if(mine&&key!==lastTurnKey){$("word").focus();}
+    lastTurnKey=key;
+  }else{
+    show("end");
+    $("winner").textContent="🏆 "+S.winner+" wins!";
+    $("endHist").textContent=S.hist.join(" → ");
+    $("again").classList.toggle("hidden",!isHost);
+    $("endMsg").textContent=isHost?"":"Waiting for the host to start another round…";
+  }
+}
 </script>
 </body>
 </html>
