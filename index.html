@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RST – the word game</title>
+<style>
+:root{--bg:#f3efe6;--card:#fffdf8;--ink:#1d2433;--mute:#6b7285;--line:#d9d2c2;--ban:#d6342c;--ok:#1f8a5b;--btn:#1d2433;--btnink:#fffdf8;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141821;--card:#1e2430;--ink:#f1ece0;--mute:#9aa1b3;--line:#323a4a;--ban:#ff6b61;--ok:#4cc790;--btn:#f1ece0;--btnink:#141821;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141821;--card:#1e2430;--ink:#f1ece0;--mute:#9aa1b3;--line:#323a4a;--ban:#ff6b61;--ok:#4cc790;--btn:#f1ece0;--btnink:#141821;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:Georgia,"Iowan Old Style","Times New Roman",serif;min-height:100vh;display:flex;justify-content:center}
+main{width:100%;max-width:520px;padding:20px 18px 40px}
+h1{font-size:64px;letter-spacing:.06em;margin:8px 0 0;text-align:center;line-height:1}
+h1 span{color:var(--ban)}
+.sub{text-align:center;color:var(--mute);margin:8px 0 20px;font-size:16px;line-height:1.4}
+.card{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+h2{font-size:18px;margin:0 0 10px}
+ol,ul{margin:0;padding-left:20px;line-height:1.5;font-size:15px}
+input{font:inherit;font-size:18px;width:100%;padding:12px;border:2px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+input:focus,button:focus-visible{outline:3px solid var(--ok);outline-offset:1px}
+button{font:inherit;font-size:17px;cursor:pointer;border:0;border-radius:10px;padding:12px 18px;background:var(--btn);color:var(--btnink);font-weight:bold}
+button.alt{background:transparent;color:var(--ink);border:2px solid var(--line)}
+button:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:8px;margin-top:10px}
+.row>*{flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{padding:6px 12px;border-radius:99px;border:2px solid var(--line);font-size:15px}
+.chip.cur{border-color:var(--ok);background:var(--ok);color:var(--btnink)}
+.chip.out{text-decoration:line-through;color:var(--mute);opacity:.6}
+.last{text-align:center;margin:6px 0 14px}
+.last small{color:var(--mute);display:block;font-size:15px}
+.last b{font-size:40px;display:block;word-break:break-word}
+.who{text-align:center;font-size:22px;margin:4px 0}
+.timer{height:8px;border-radius:8px;background:var(--line);overflow:hidden;margin:10px 0}
+.timer i{display:block;height:100%;background:var(--ok);width:100%;transition:width 1s linear}
+.msg{min-height:24px;text-align:center;font-size:16px;margin:10px 0 0}
+.msg.bad{color:var(--ban);font-weight:bold}
+.big{text-align:center;font-size:34px;margin:10px 0}
+.hist{color:var(--mute);font-size:15px;line-height:1.6;margin-top:6px;word-break:break-word}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>R<span>S</span>T</h1>
+<p class="sub">Say a word that fits the last one. Never start with R, S or T.</p>
+
+<section id="setup">
+  <div class="card">
+    <h2>How to play</h2>
+    <ol>
+      <li>First player says any word.</li>
+      <li>Next player says a word that is similar to or makes sense with it.</li>
+      <li>A word starting with <b style="color:var(--ban)">R, S or T</b> puts you out.</li>
+      <li>Repeated words, unrelated words or running out of time also put you out.</li>
+      <li>Last player left wins.</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h2>Players</h2>
+    <div id="names"></div>
+    <div class="row">
+      <button class="alt" id="add">Add player</button>
+      <button class="alt" id="rem">Remove player</button>
+    </div>
+    <div class="row"><button id="start">Start game</button></div>
+  </div>
+</section>
+
+<section id="play" class="hidden">
+  <div class="card">
+    <div class="who" id="who"></div>
+    <div class="last"><small id="lastLabel"></small><b id="lastWord"></b></div>
+    <div class="timer"><i id="bar"></i></div>
+    <input id="word" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type your word" aria-label="Your word">
+    <div class="row"><button id="say">Say it</button></div>
+    <div class="row"><button class="alt" id="judge">Doesn’t make sense – out</button></div>
+    <div class="msg" id="msg" aria-live="polite"></div>
+    <div class="chips" id="chips"></div>
+    <div class="hist" id="hist"></div>
+  </div>
+</section>
+
+<section id="end" class="hidden">
+  <div class="card">
+    <div class="big" id="winner"></div>
+    <div class="hist" id="endHist"></div>
+    <div class="row"><button id="again">Play again</button></div>
+  </div>
+</section>
+</main>
+
+<script>
+const BAN="rst", TIME=10;
+let names=["Player 1","Player 2"], players=[], cur=0, last="", used=[], hist=[], t=TIME, iv=null;
+const $=id=>document.getElementById(id);
+
+function drawNames(){
+  $("names").innerHTML="";
+  names.forEach((n,i)=>{
+    const inp=document.createElement("input");
+    inp.value=n; inp.style.marginBottom="8px"; inp.setAttribute("aria-label","Player "+(i+1)+" name");
+    inp.oninput=()=>names[i]=inp.value;
+    $("names").appendChild(inp);
+  });
+  $("rem").disabled=names.length<=2;
+  $("add").disabled=names.length>=12;
+}
+$("add").onclick=()=>{names.push("Player "+(names.length+1));drawNames();};
+$("rem").onclick=()=>{if(names.length>2){names.pop();drawNames();}};
+
+$("start").onclick=()=>{
+  players=names.map((n,i)=>({name:n.trim()||"Player "+(i+1),out:false}));
+  cur=0; last=""; used=[]; hist=[];
+  $("setup").classList.add("hidden"); $("end").classList.add("hidden"); $("play").classList.remove("hidden");
+  render(); startTimer();
+};
+
+function alive(){return players.filter(p=>!p.out);}
+
+function render(){
+  $("who").textContent=players[cur].name+"’s turn";
+  $("lastLabel").textContent=last?"Last word":"You start";
+  $("lastWord").textContent=last||"Any word you like";
+  $("judge").classList.toggle("hidden",!last);
+  $("chips").innerHTML=players.map((p,i)=>`<span class="chip ${p.out?"out":""} ${i===cur?"cur":""}">${esc(p.name)}</span>`).join("");
+  $("hist").textContent=hist.length?hist.slice(-8).join(" → "):"";
+  $("word").value=""; $("word").focus();
+}
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function startTimer(){
+  clearInterval(iv); t=TIME; bar();
+  iv=setInterval(()=>{t--;bar();if(t<=0){eliminate("ran out of time");}},1000);
+}
+function bar(){$("bar").style.width=(t/TIME*100)+"%";$("bar").style.background=t<=5?"var(--ban)":"var(--ok)";}
+
+function msg(text,bad){$("msg").textContent=text;$("msg").className="msg"+(bad?" bad":"");}
+
+function next(){
+  do{cur=(cur+1)%players.length;}while(players[cur].out);
+}
+
+function eliminate(reason){
+  clearInterval(iv);
+  const p=players[cur]; p.out=true;
+  hist.push("✗ "+p.name);
+  if(alive().length===1){return finish();}
+  msg(p.name+" is out: "+reason,true);
+  next(); render(); startTimer();
+  $("msg").textContent=p.name+" is out: "+reason; $("msg").className="msg bad";
+}
+
+function submit(){
+  const w=$("word").value.trim();
+  if(!w){msg("Type a word first.",true);return;}
+  const lw=w.toLowerCase();
+  if(BAN.includes(lw[0])){return eliminate("“"+w+"” starts with "+w[0].toUpperCase());}
+  if(used.includes(lw)){return eliminate("“"+w+"” was already said");}
+  used.push(lw); last=w; hist.push(w);
+  clearInterval(iv); next(); render(); msg(""); startTimer();
+}
+
+function finish(){
+  clearInterval(iv);
+  $("play").classList.add("hidden"); $("end").classList.remove("hidden");
+  $("winner").textContent="🏆 "+alive()[0].name+" wins!";
+  $("endHist").textContent=hist.join(" → ");
+}
+
+$("say").onclick=submit;
+$("word").addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
+$("judge").onclick=()=>eliminate("word didn’t make sense");
+$("again").onclick=()=>{$("end").classList.add("hidden");$("setup").classList.remove("hidden");};
+drawNames();
+</script>
+</body>
+</html>
